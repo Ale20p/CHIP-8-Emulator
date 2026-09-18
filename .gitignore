@@ -1,0 +1,29 @@
+# Build output and CMake generation
+build/
+bin/
+out/
+CMakeFiles/
+CMakeCache.txt
+
+# Visual Studio & compiler artifacts
+*.sln
+*.vcxproj* 
+.vs/
+*.obj
+*.o
+*.exe
+*.dll
+*.pdb
+*.ilk
+
+# IDE settings
+.vscode/
+.idea/
+
+# CHIP-8 ROM files (avoid committing copyrighted binaries)
+roms/*.ch8
+roms/*.bin
+
+# Operating system files
+.DS_Store
+Thumbs.db
