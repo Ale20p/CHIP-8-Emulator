@@ -1,5 +1,7 @@
 #include "Chip8.h"
 #include <cstring>
+#include <iostream>
+#include <fstream>
 
 constexpr unsigned int FONTSET_START_ADDRESS = 0x50;
 constexpr unsigned int FONTSET_SIZE = 80;
@@ -46,4 +48,29 @@ void Chip8::initialize() {
     for (unsigned int i = 0; i < FONTSET_SIZE; ++i) {
         memory[FONTSET_START_ADDRESS + i] = fontset[i];
     }
+}
+
+bool Chip8::loadROM(const char* filename) {
+    // Open in binary mode and position the pointer at the end to get file size
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open ROM file " << filename << std::endl;
+        return false; 
+    }
+
+    std::streampos size = file.tellg();
+    constexpr size_t max_size = 4096 - 0x200; // 3584 bytes available
+
+    // Prevent buffer overflow into memory
+    if (size > max_size) {
+        std::cerr << "Error: ROM size (" << size << " bytes) exceeds available space (" << max_size <<  " bytes)." << std::endl;
+        return false; 
+    }
+
+    // Seek back to the beginning and read into memory starting at 0x200
+    file.seekg(0, std::ios::beg);
+    file.read(reinterpret_cast<char*>(&memory[0x200]), size);
+    file.close();
+
+    return true;
 }

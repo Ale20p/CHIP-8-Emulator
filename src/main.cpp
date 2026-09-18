@@ -1,21 +1,22 @@
+#include "Chip8.h"
 #include <SDL.h>
 #include <iostream>
+#include <iomanip>
 
 int main(int argc, char* argv[]) {
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+    Chip8 chip8;
+
+    if (!chip8.loadROM("C:/Users/alexp/WORKSPACES/InProProjects/CHIP-8-Emulator/roms/IBM_Logo.ch8")) {
         return 1;
     }
 
-    SDL_Window* win = SDL_CreateWindow("CHIP-8 Test", 100, 100, 640, 320, SDL_WINDOW_SHOWN);
-    if (!win) {
-        std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-        return 1;
+    // Print the first 16 bytes loaded at 0x200
+    // (If memory is private, temporarily make it public or add a debug getter)
+    std::cout << "First 16 bytes at 0x200:\n";
+    for (int i = 0x200; i < 0x210; ++i) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(chip8.memory[i]) << " ";
     }
+    std::cout << std::dec << "\n";
 
-    SDL_Delay(2000); // Display the window for 2 seconds
-
-    SDL_DestroyWindow(win);
-    SDL_Quit();
     return 0;
 }

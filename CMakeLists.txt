@@ -8,7 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(SDL2 CONFIG REQUIRED)
 
 # Execute target
-add_executable(chip8 src/main.cpp)
+add_executable(chip8 
+    src/main.cpp
+    src/Chip8.cpp
+)
 
 target_include_directories(chip8 PRIVATE src)
 
