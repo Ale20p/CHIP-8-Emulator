@@ -10,12 +10,14 @@ int main(int argc, char* argv[]) {
     const int SCALE = 10;
 
     Platform platform(
-        "CHIP-8 Phase 6 test",
+        "CHIP-8 Phase 7 test",
         CHIP8_WIDTH * SCALE,
         CHIP8_HEIGHT * SCALE,
         CHIP8_WIDTH,
         CHIP8_HEIGHT
     );
+
+    Chip8 chip8;
 
     uint32_t video[CHIP8_WIDTH * CHIP8_HEIGHT];
 
@@ -42,18 +44,21 @@ int main(int argc, char* argv[]) {
     SDL_Event event;
 
     while (running) {
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                running = false;
+        running = platform.ProcessInput(chip8.keypad);
+
+        for (int i = 0; i < 16; i++) {
+            if (chip8.keypad[i]) {
+                std::cout << "Key preseed: 0x" << std::hex << i << "\n";
             }
         }
 
-        // Push buffer to the texture and display
         platform.Update(video, pitch);
 
-        // Cap frame rate slightly (~60 FPS) to prevent 100% CPU usage
+
         SDL_Delay(16);
     }
+
+    std::cout << "Quit event received successfully.\n";
 
     return 0;
 }

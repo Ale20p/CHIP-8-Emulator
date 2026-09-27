@@ -9,6 +9,7 @@ public:
     ~Platform();
 
     void Update(const void* buffer, int pitch);
+    bool ProcessInput(uint8_t* keypad);
 
 private:
     SDL_Window* window{nullptr};
