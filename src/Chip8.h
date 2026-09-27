@@ -19,4 +19,5 @@ class Chip8 {
         void initialize();
         bool loadROM(const char*);
         void Cycle();
+        void PrintDisplay();
 };

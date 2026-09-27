@@ -156,32 +156,37 @@ void Chip8::Cycle() {
                 case 0x3: // 8XY3: Set Vx = Vx XOR Vy
                     V[x] ^= V[y];
                     break;
-                case 0x4: // 8XY4: Set Vx = Vx + Vy, set VF = carry
+                case 0x4: { // 8XY4: Set Vx = Vx + Vy, set VF = carry
                     uint16_t sum = static_cast<uint16_t>(V[x]) + static_cast<uint16_t>(V[y]);
                     V[x] = sum & 0xFF;
                     V[0xF] = (sum > 0xFF) ? 1 : 0; // 1 if overflow (> 255), 0 otherwise
                     break;
-                case 0x5: // 8XY5: Set Vx = Vx - Vy, set VF = NOT borrow
+                }
+                case 0x5: { // 8XY5: Set Vx = Vx - Vy, set VF = NOT borrow
                     // 1 if there is no borrow, and 0 if there is borrow
                     uint8_t flag = (V[x] >= V[y]) ? 1 : 0;
                     V[x] = V[x] - V[y];
                     V[0xF] = flag;
                     break;
-                case 0x6: // 8XY6: Shift right
+                }
+                case 0x6: {// 8XY6: Shift right
                     uint8_t lsb = V[x] & 0x01; // least significant bit
                     V[x] >>= 1;
                     V[0xF] = lsb; // store shifted-out bit into VF
                     break;
-                case 0x7: // 8XY7: Set Vx = Vy - Vx, set VF = NOT borrow
+                }
+                case 0x7: { // 8XY7: Set Vx = Vy - Vx, set VF = NOT borrow
                     uint8_t flag = (V[y] >= V[x]) ? 1 : 0;
                     V[x] = V[y] - V[x];
                     V[0xF] = flag;
                     break;
-                case 0xE: // 8XYE: Shift left
+                }
+                case 0xE: { // 8XYE: Shift left
                     uint8_t msb = (V[x] & 0x80) >> 7; // most significant bit
                     V[x] <<= 1;
                     V[0xF] = msb;
                     break;
+                }
                 default:
                     std::cerr << "Unknown 0x8000 opcode 0x" << std::hex << opcode << "\n";
                     break;
@@ -203,9 +208,9 @@ void Chip8::Cycle() {
             pc = nnn + V[0];
             break;
         case 0xC000: // CXNN: Set Vx = random byte AND NN
-                V[x] = (rand() % 256) & nn;
+            V[x] = (rand() % 256) & nn;
             break;
-        case 0xD000: // DXYN: Draw sprite at (Vx, Vy) with height N
+        case 0xD000: { // DXYN: Draw sprite at (Vx, Vy) with height N
                 uint8_t xCoord = V[x] % 64;
                 uint8_t yCoord = V[y] % 32;
 
@@ -234,31 +239,35 @@ void Chip8::Cycle() {
                     }
                 }
             break;
-        case 0xE000: // Key input skips
+        }
+        case 0xE000: { // Key input skips
             switch(opcode & 0x00FFu) {
-                case 0x9E: // EX9E: Skip if key Vx is pressed
+                case 0x9E: { // EX9E: Skip if key Vx is pressed
                     uint8_t key = V[x];
                     if (key < 16 && keypad[key] != 0) {
                         pc += 2;
                     }
                     break;
-                case 0xA1: // EXA1: Skip if key Vx is not pressed
+                }
+                case 0xA1: { // EXA1: Skip if key Vx is not pressed
                     uint8_t key = V[x];
                     if (key >= 16 || keypad[key] == 0) {
                         pc += 2;
                     }
                     break;
+                }
                 default:
                     std::cerr << "Unknown 0xE000 opcode 0x" << std::hex << opcode << "\n";
                     break;
                 }
                 break;
-        case 0xF000: // Timers, memory, and BCD operations
+            }
+        case 0xF000: { // Timers, memory, and BCD operations
             switch(opcode & 0x00FFu) {
                 case 0x07: // FX07: Set Vx = delay timer
                     V[x] = delayTimer;
                     break;
-                case 0x0A: // FX0A: Wait for a key press, store in Vx
+                case 0x0A: { // FX0A: Wait for a key press, store in Vx
                     bool keyPressed = false;
 
                     for (uint8_t i = 0; i < 16; i++) {
@@ -274,20 +283,25 @@ void Chip8::Cycle() {
                         pc -= 2;
                     }
                     break;
-                case 0x15: // FX15: Set delay timer = Vx
+                }
+                case 0x15: { // FX15: Set delay timer = Vx
                     delayTimer = V[x];
                     break;
-                case 0x18: // FX18: Set sound timer = Vx
+                }
+                case 0x18: { // FX18: Set sound timer = Vx
                     soundTimer = V[x];
                     break;
-                case 0x1E: // FX1E: Set I = I + Vx
+                }
+                case 0x1E: { // FX1E: Set I = I + Vx
                     I += V[x];
                     break;
-                case 0x29: // FX29: Set I = location of sprite for digit Vx
+                }
+                case 0x29: { // FX29: Set I = location of sprite for digit Vx
                     // standard font characcters are 5 bytes tall, loaded at 0x50
                     I = 0x50 + (V[x] * 5);
                     break;
-                case 0x33: // FX33: Store BCD representation of Vx in I, I + 1, I + 2
+                }
+                case 0x33: { // FX33: Store BCD representation of Vx in I, I + 1, I + 2
                     uint8_t value = V[x];
                     memory[I + 2] = value % 10;
                     value /= 10;
@@ -295,22 +309,25 @@ void Chip8::Cycle() {
                     value /= 10;
                     memory[I] = value % 10;
                     break;
-                case 0x55: // FX55: Store registers V0 through Vx in memory starting at I
+                }
+                case 0x55: { // FX55: Store registers V0 through Vx in memory starting at I
                     for (uint8_t i = 0; i <= x; ++i) {
                         memory[I + i] = V[i];
                     }
                     break;
-                case 0x65: // FX65: Read registers V0 through Vx from memory starting at I
+                }
+                case 0x65: { // FX65: Read registers V0 through Vx from memory starting at I
                     for (uint8_t i = 0; i <= x; i++) {
                         V[i] = memory[I + i];
                     }
                     break;
+                }
                 default:
                     std::cerr << "Unknown 0xF000 opcode 0x" << std::hex << opcode << "\n";
                     break;
             }
             break;
-
+        }
         default:
             std::cerr << "Unrecogned opcode: 0x" << std::hex << opcode << "\n";
             break;
@@ -324,4 +341,25 @@ void Chip8::Cycle() {
     if (soundTimer > 0) {
         --soundTimer;
     }
+}
+
+void Chip8::PrintDisplay() {
+    // top border
+    std::cout << "+" << std::string(64, '-') << "+\n";
+
+    for (int y = 0; y < 32; ++y) {
+        std::cout << "|";
+        for (int x = 0; x < 64; ++x) {
+            // video[y * 64 + x] is 0xFFFFFFFF when on, 0 when off
+            if (video[y * 64 + x] != 0) {
+                std::cout << "#";
+            } else {
+                std::cout << " ";
+            }
+        }
+        std::cout << "|\n";
+    }
+
+    // bottom border
+    std::cout << "+" << std::string(64, '-') << "+\n";
 }
