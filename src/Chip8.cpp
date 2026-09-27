@@ -98,10 +98,11 @@ void Chip8::Cycle() {
         case 0x0000:
             switch(opcode & 0x00FFu) {
                 case 0x00E0: // 00E0: clear screen
-                    // TODO
+                    std::memset(video, 0, sizeof(video));
                     break;
                 case 0x00EE: // 00EE: return from subroutine 
-                    // TODO
+                    --sp;
+                    pc = stack[sp];
                     break;
                 default:
                     std::cerr << "Unknown 0x0000 opcode 0x:" << std::hex << opcode << "\n";
@@ -109,67 +110,143 @@ void Chip8::Cycle() {
             }
             break;
         case 0x1000: // 1NNN: Jump to address NNN
-            // TODO
+            pc = nnn;
             break;
         case 0x2000: // 2NNN: Call subroutine at NNN
-            // TODO
+            stack[sp] = pc;
+            ++sp;
+            pc = nnn;
             break;
         case 0x3000: // 3XNN: Skipnext instruction if Vx == NN
-            // TODO
+            if (V[x] == nn) {
+                pc += 2;
+            }
             break;
         case 0x4000: // 4XNN: Skip next instruction if Vx != NN
-            // TODO
+            if (V[x] != nn) {
+                pc += 2;
+            }
             break;
         case 0x5000: // 5XY0: Skip next instruction if Vx == Vy
-            // TODO
+            if ( n == 0x0) {
+                if (V[x] == V[y]) {
+                    pc += 2;
+                } else {
+                    std::cerr << "Unknown opcode [0x5000]: 0x" << std::hex << opcode << "\n";
+                }
+            }
             break;
-        case 0x6000: // 6XNN: Set Vx == NN
-            // TODO
+        case 0x6000: // 6XNN: Set Vx = NN
+            V[x] = nn;
             break;
         case 0x7000: // 7XNN: Set Vx = Vx + NN (no carry)
-            // TODO
+            V[x] += nn;
             break;
         case 0x8000: // Arithmetic and logical operations
             switch (opcode & 0x000Fu) {
                 case 0x0: // 8XY0: Set Vx = Vy
+                    V[x] = V[y];
                     break;
                 case 0x1: // 8XY1: Set Vx = Vx OR Vy
+                    V[x] |= V[y];
                     break;
                 case 0x2: // 8XY2: Set Vx = Vx AND Vy
+                    V[x] &= V[y];
                     break;
                 case 0x3: // 8XY3: Set Vx = Vx XOR Vy
+                    V[x] ^= V[y];
                     break;
                 case 0x4: // 8XY4: Set Vx = Vx + Vy, set VF = carry
+                    uint16_t sum = static_cast<uint16_t>(V[x]) + static_cast<uint16_t>(V[y]);
+                    V[x] = sum & 0xFF;
+                    V[0xF] = (sum > 0xFF) ? 1 : 0; // 1 if overflow (> 255), 0 otherwise
                     break;
                 case 0x5: // 8XY5: Set Vx = Vx - Vy, set VF = NOT borrow
+                    // 1 if there is no borrow, and 0 if there is borrow
+                    uint8_t flag = (V[x] >= V[y]) ? 1 : 0;
+                    V[x] = V[x] - V[y];
+                    V[0xF] = flag;
                     break;
                 case 0x6: // 8XY6: Shift right
+                    uint8_t lsb = V[x] & 0x01; // least significant bit
+                    V[x] >>= 1;
+                    V[0xF] = lsb; // store shifted-out bit into VF
                     break;
                 case 0x7: // 8XY7: Set Vx = Vy - Vx, set VF = NOT borrow
+                    uint8_t flag = (V[y] >= V[x]) ? 1 : 0;
+                    V[x] = V[y] - V[x];
+                    V[0xF] = flag;
                     break;
-                case 0x8: // 8XYE: Shift left
+                case 0xE: // 8XYE: Shift left
+                    uint8_t msb = (V[x] & 0x80) >> 7; // most significant bit
+                    V[x] <<= 1;
+                    V[0xF] = msb;
                     break;
                 default:
-                std::cerr << "Unknown 0x8000 opcode 0x" << std::hex << opcode << "\n";
+                    std::cerr << "Unknown 0x8000 opcode 0x" << std::hex << opcode << "\n";
                     break;
                 }   
                 break;
         case 0x9000: // 9XY0: Skip next instruction if Vx != Vy
+                if (n == 0) {
+                    if (V[x] != V[y]) {
+                        pc += 2;
+                    } else {
+                        std::cerr << "Unknow opcode [0x9000]: 0x" << std::hex << opcode << "\n";
+                    }
+                }
             break;
         case 0xA000: // ANNN: Set I = NNN
-            // TODO
+            I = nnn;
             break;
         case 0xB000: // BNNN: Jump to location NNN + V0
+            pc = nnn + V[0];
             break;
         case 0xC000: // CXNN: Set Vx = random byte AND NN
+                V[x] = (rand() % 256) & nn;
             break;
         case 0xD000: // DXYN: Draw sprite at (Vx, Vy) with height N
+                uint8_t xCoord = V[x] % 64;
+                uint8_t yCoord = V[y] % 32;
+
+                // reset collision register before drawing
+                V[0xF] = 0;
+
+                for (unsigned int row = 0; row < n; ++row) {
+                    uint8_t spriteByte = memory[I + row];
+
+                    for (unsigned int col = 0; col < 8; ++col) {
+                        // check if the current bit of the sprite is set
+                        if ((spriteByte & (0x80 >> col)) != 0) {
+                            // wrap sprite pixels around screen boundaries
+                            unsigned int pixelX = (xCoord + col) % 64;
+                            unsigned int pixelY = (yCoord + row) % 32;
+                            unsigned int index = pixelY * 64 + pixelX;
+
+                            // check for collision: if the screen pixel is already turned on
+                            if (video[index] == 0xFFFFFFFF) {
+                                V[0xF] = 1;
+                            }
+
+                            // XOR the screen pixel (toggle between 0x00000000 and 0xFFFFFFFF)
+                            video[index] ^= 0xFFFFFFFF;
+                        }
+                    }
+                }
             break;
         case 0xE000: // Key input skips
             switch(opcode & 0x00FFu) {
-                case 0x9E: // EX9E: Skip if jey Vx is pressed
+                case 0x9E: // EX9E: Skip if key Vx is pressed
+                    uint8_t key = V[x];
+                    if (key < 16 && keypad[key] != 0) {
+                        pc += 2;
+                    }
                     break;
                 case 0xA1: // EXA1: Skip if key Vx is not pressed
+                    uint8_t key = V[x];
+                    if (key >= 16 || keypad[key] == 0) {
+                        pc += 2;
+                    }
                     break;
                 default:
                     std::cerr << "Unknown 0xE000 opcode 0x" << std::hex << opcode << "\n";
@@ -179,22 +256,54 @@ void Chip8::Cycle() {
         case 0xF000: // Timers, memory, and BCD operations
             switch(opcode & 0x00FFu) {
                 case 0x07: // FX07: Set Vx = delay timer
+                    V[x] = delayTimer;
                     break;
                 case 0x0A: // FX0A: Wait for a key press, store in Vx
+                    bool keyPressed = false;
+
+                    for (uint8_t i = 0; i < 16; i++) {
+                        if (keypad[i] != 0) {
+                            V[x] = i;
+                            keyPressed = true;
+                            break;
+                        }
+                    }
+
+                    // if no key is down, rewind PC by 2 so this opcode repeats next cycle
+                    if (!keyPressed) {
+                        pc -= 2;
+                    }
                     break;
                 case 0x15: // FX15: Set delay timer = Vx
+                    delayTimer = V[x];
                     break;
                 case 0x18: // FX18: Set sound timer = Vx
+                    soundTimer = V[x];
                     break;
                 case 0x1E: // FX1E: Set I = I + Vx
+                    I += V[x];
                     break;
                 case 0x29: // FX29: Set I = location of sprite for digit Vx
+                    // standard font characcters are 5 bytes tall, loaded at 0x50
+                    I = 0x50 + (V[x] * 5);
                     break;
                 case 0x33: // FX33: Store BCD representation of Vx in I, I + 1, I + 2
+                    uint8_t value = V[x];
+                    memory[I + 2] = value % 10;
+                    value /= 10;
+                    memory[I + 1] = value % 10;
+                    value /= 10;
+                    memory[I] = value % 10;
                     break;
                 case 0x55: // FX55: Store registers V0 through Vx in memory starting at I
+                    for (uint8_t i = 0; i <= x; ++i) {
+                        memory[I + i] = V[i];
+                    }
                     break;
                 case 0x65: // FX65: Read registers V0 through Vx from memory starting at I
+                    for (uint8_t i = 0; i <= x; i++) {
+                        V[i] = memory[I + i];
+                    }
                     break;
                 default:
                     std::cerr << "Unknown 0xF000 opcode 0x" << std::hex << opcode << "\n";
