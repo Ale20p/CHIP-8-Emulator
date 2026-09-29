@@ -332,15 +332,6 @@ void Chip8::Cycle() {
             std::cerr << "Unrecogned opcode: 0x" << std::hex << opcode << "\n";
             break;
     }
-    
-
-    // 4. Timers
-    if (delayTimer > 0) {
-        --delayTimer;
-    }
-    if (soundTimer > 0) {
-        --soundTimer;
-    }
 }
 
 void Chip8::PrintDisplay() {
@@ -362,4 +353,26 @@ void Chip8::PrintDisplay() {
 
     // bottom border
     std::cout << "+" << std::string(64, '-') << "+\n";
+}
+
+void Chip8::dumpState() {
+    printf("\n=== CPU STATE ===\n");
+    printf("PC: 0x%03X | Opcode: 0x%04X | I: 0x%03X | SP: 0x%02X\n", pc, opcode, I, sp);
+    printf("Delay Timer: %3d | Sound Timer: %3d\n", delayTimer, soundTimer);
+
+    printf("Registers (V0-VF:)\n");
+    for (int i = 0; i < 16; ++i) {
+        printf(" V%X: 0x%02X", i, V[i]);
+        if ((i + 1) % 4 == 0) {
+            printf("\n");
+        }
+    }
+
+    if (sp > 0) {
+        printf("Call Stack (depth: %d):\n", sp);
+        for (int i = 0; i < sp; ++i) {
+            printf(" [%d] 0x%03\n", i, stack[i]);
+        }
+        printf("================\n");
+    }
 }

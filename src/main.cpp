@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
 
     const char* romFilename = argv[1];
 
-    // Default to 600 Hz 
+    // Default to 60 Hz 
     int clockSpeed = 600;
 
     if (argc >= 3) {

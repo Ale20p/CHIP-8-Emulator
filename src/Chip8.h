@@ -20,4 +20,5 @@ class Chip8 {
         bool loadROM(const char*);
         void Cycle();
         void PrintDisplay();
+        void dumpState();
 };
